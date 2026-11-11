@@ -1,0 +1,9 @@
+# Minimal Hardened Runner Image for Node.js Sandboxed Execution
+FROM node:20-alpine
+
+# Set non-root working environment
+USER node
+WORKDIR /workspace
+
+# Entrypoint default
+CMD ["node", "-v"]

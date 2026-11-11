@@ -1,0 +1,169 @@
+services:
+  # 1. High-Performance NGINX Load Balancer
+  nginx-lb:
+    image: nginx:alpine
+    container_name: ide-nginx-lb
+    ports:
+      - "80:80"
+      - "3000:3000"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api-gateway-1
+      - api-gateway-2
+    restart: unless-stopped
+
+  # 2. Redis 7 Execution Broker & Distributed Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ide-redis
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # 3. Hardened Sandbox Base Image
+  sandbox-runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.runner
+    image: node-sandbox-runner:20-alpine
+    restart: "no"
+
+  # 4. Stateless API Gateway Replica 1
+  api-gateway-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ide-api-gateway-1
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_NAME=node-execution
+      - WORKER_STANDALONE=true
+      - MAX_ACTIVE_JOBS_PER_USER=3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - app-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 5. Stateless API Gateway Replica 2
+  api-gateway-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ide-api-gateway-2
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_NAME=node-execution
+      - WORKER_STANDALONE=true
+      - MAX_ACTIVE_JOBS_PER_USER=3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - app-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 6. Distributed Worker Pool Node 1 (8 concurrent sandbox slots)
+  worker-pool-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "dist/server/workerPool.js"]
+    container_name: ide-worker-1
+    environment:
+      - NODE_ENV=production
+      - WORKER_ID=worker-node-01
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_NAME=node-execution
+      - WORKER_CONCURRENCY=8
+      - MAX_SANDBOXES_PER_HOST=8
+      - SANDBOX_RUNTIME=docker
+      - DOCKER_IMAGE=node-sandbox-runner:20-alpine
+      - SANDBOX_WORKSPACE_DIR=/tmp/ide-sandboxes
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - sandbox-workspaces:/tmp/ide-sandboxes
+      - app-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 7. Distributed Worker Pool Node 2 (8 concurrent sandbox slots)
+  worker-pool-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "dist/server/workerPool.js"]
+    container_name: ide-worker-2
+    environment:
+      - NODE_ENV=production
+      - WORKER_ID=worker-node-02
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_NAME=node-execution
+      - WORKER_CONCURRENCY=8
+      - MAX_SANDBOXES_PER_HOST=8
+      - SANDBOX_RUNTIME=docker
+      - DOCKER_IMAGE=node-sandbox-runner:20-alpine
+      - SANDBOX_WORKSPACE_DIR=/tmp/ide-sandboxes
+      - app-data:/app/data
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - sandbox-workspaces:/tmp/ide-sandboxes
+      - app-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 8. Prometheus Telemetry Scraper
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: ide-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+
+  # 9. Grafana Real-Time Dashboard
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: ide-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  sandbox-workspaces:
+  app-data:

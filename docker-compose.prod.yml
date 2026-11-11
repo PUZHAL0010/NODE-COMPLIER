@@ -1,0 +1,71 @@
+# ==============================================================================
+# Production Docker Compose for Node.js Web IDE & Execution Platform
+# Deploys using pre-built images from Docker Hub (puzhalmani0010)
+# ==============================================================================
+
+services:
+  # 1. Distributed Redis 7 Cache & Job Broker
+  redis:
+    image: redis:7-alpine
+    container_name: ide-prod-redis
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-prod-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: always
+
+  # 2. Stateless API Gateway & Web IDE Interface
+  api-gateway:
+    image: puzhalmani0010/node-compiler-platform:latest
+    container_name: ide-prod-gateway
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_NAME=node-execution
+      - SANDBOX_RUNTIME=process
+      - WORKER_CONCURRENCY=8
+      - WORKER_STANDALONE=true
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - sandbox-prod-workspaces:/tmp/ide-sandboxes
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  # 3. High-Concurrency BullMQ Execution Worker Pool
+  worker-pool:
+    image: puzhalmani0010/node-compiler-platform:latest
+    container_name: ide-prod-worker
+    command: ["node", "dist/server/workerPool.js"]
+    network_mode: "service:api-gateway"
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_NAME=node-execution
+      - WORKER_CONCURRENCY=8
+      - MAX_SANDBOXES_PER_HOST=8
+      - SANDBOX_RUNTIME=process
+      - SANDBOX_WORKSPACE_DIR=/tmp/ide-sandboxes
+    volumes:
+      - sandbox-prod-workspaces:/tmp/ide-sandboxes
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+volumes:
+  redis-prod-data:
+  sandbox-prod-workspaces:

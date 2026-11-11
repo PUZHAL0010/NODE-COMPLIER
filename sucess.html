@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validation Success</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="card success-card">
+    <div class="success-icon">✓</div>
+    <h1>Email Validated!</h1>
+    <p class="subtitle">Your email address passed all verification checks.</p>
+
+    <div class="email-badge-box">
+      <span class="label">Validated Email:</span>
+      <span id="validatedEmailText" class="email-value">user@example.com</span>
+    </div>
+
+    <div class="success-details">
+      <p>✓ Status: <strong>200 OK</strong></p>
+      <p>✓ Format: RFC compliant (regex matched)</p>
+      <p>✓ API Message: <strong id="apiMessageText">Email is valid!</strong></p>
+    </div>
+
+    <div class="actions">
+      <a href="/views/index.html" id="btnBack" class="btn">← Back to Validator</a>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Read email and message from URL search params or sessionStorage
+      const params = new URLSearchParams(window.location.search);
+      let email = params.get('email');
+      let message = params.get('message');
+
+      if (!email) {
+        try {
+          email = sessionStorage.getItem('validated_email');
+          message = sessionStorage.getItem('validated_message');
+        } catch(e) {}
+      }
+
+      if (email) {
+        const emailEl = document.getElementById('validatedEmailText');
+        if (emailEl) emailEl.textContent = email;
+      }
+
+      if (message) {
+        const msgEl = document.getElementById('apiMessageText');
+        if (msgEl) msgEl.textContent = message;
+      }
+
+      // 2. Handle Back button click for in-preview browser navigation
+      const backLink = document.getElementById('btnBack');
+      if (backLink) {
+        backLink.addEventListener('click', (e) => {
+          if (typeof window.navigateTo === 'function') {
+            e.preventDefault();
+            window.navigateTo('/views/index.html');
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

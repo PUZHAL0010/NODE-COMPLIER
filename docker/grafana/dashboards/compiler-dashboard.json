@@ -1,0 +1,168 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Active Concurrent Executions (Target: 150+)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(ide_queue_active_jobs)",
+          "legendFormat": "Active Executing Jobs",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "#EAB839", "value": 100 },
+              { "color": "red", "value": 160 }
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "title": "Queue Backpressure (Waiting Jobs)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(ide_queue_waiting_jobs)",
+          "legendFormat": "Waiting in Queue",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "#EAB839", "value": 20 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "title": "Worker Pool Concurrency Capacity",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(ide_worker_concurrency)",
+          "legendFormat": "Total Execution Slots",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "blue", "mode": "fixed" }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "title": "Total Executions Processed",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(ide_executions_total)",
+          "legendFormat": "Total Jobs",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "purple", "mode": "fixed" }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 5,
+      "title": "Execution Duration Percentiles (p50, p95, p99)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "max(ide_execution_duration_p50_ms)",
+          "legendFormat": "p50 (Median)",
+          "refId": "A"
+        },
+        {
+          "expr": "max(ide_execution_duration_p95_ms)",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "max(ide_execution_duration_p99_ms)",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "lineInterpolation": "smooth"
+          }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 6,
+      "title": "Heap Memory Allocation Across Replicas",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "ide_memory_heap_used_bytes",
+          "legendFormat": "{{instance}} Used",
+          "refId": "A"
+        },
+        {
+          "expr": "ide_memory_heap_total_bytes",
+          "legendFormat": "{{instance}} Allocated",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      }
+    }
+  ],
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["node-compiler", "distributed-execution", "production"],
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": { "refresh_intervals": ["5s", "10s", "30s"] },
+  "timezone": "browser",
+  "title": "Node.js Distributed Compiler - 150+ User Production Telemetry",
+  "version": 1
+}
